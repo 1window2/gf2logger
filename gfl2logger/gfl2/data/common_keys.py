@@ -19,6 +19,7 @@ class CommonKeysData(BaseData):
         {
             "name": "gfl2_commonkeys",
             "label": "Common Keys",
+            "category": "Others",
             "typespec": bool,
             "default": True,
             "help": "Log Common Keys on login",
@@ -45,7 +46,7 @@ class CommonKeysData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = (
+        filename = self.output_path(
             f"gfl2logger_commonkeys_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
         )
         cols = [

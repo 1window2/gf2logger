@@ -19,6 +19,7 @@ class FormationsData(BaseData):
         {
             "name": "gfl2_formations",
             "label": "Formations",
+            "category": "Others",
             "typespec": bool,
             "default": True,
             "help": "Log Formations on login",
@@ -68,7 +69,7 @@ class FormationsData(BaseData):
                 yield {k: output[k] for k in output if output[k]}
 
     def to_json(self) -> None:
-        filename = (
+        filename = self.output_path(
             f"gfl2logger_formations_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.json"
         )
         data = list(self.to_dicts())

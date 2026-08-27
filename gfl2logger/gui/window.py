@@ -3,7 +3,7 @@ import multiprocessing
 import signal
 import threading
 import tkinter
-from ctypes import windll
+import ctypes
 from idlelib import tooltip
 from tkinter import ttk
 
@@ -21,10 +21,11 @@ class TkWindow(tkinter.Tk):
         self.active = True
         self.options: dict[str, tkinter.Variable] = {}
 
-        try:
-            windll.shcore.SetProcessDpiAwareness(1)
-        except Exception:
-            pass
+        if windll := getattr(ctypes, "windll", None):
+            try:
+                windll.shcore.SetProcessDpiAwareness(1)
+            except Exception:
+                pass
 
         super().__init__()
         self.title("gfl2logger")
@@ -41,9 +42,33 @@ class TkWindow(tkinter.Tk):
 
         opt_frame = ttk.Frame(self, padding=10)
         opt_frame.pack(side="left", fill="y")
+        style = ttk.Style(self)
+        style.configure("OptionGroup.TLabel", foreground="dim gray")
+
+        current_category = None
         for opt in data.get_options():
             if "name" not in opt:
                 continue
+
+            category = opt.get("category", "Options")
+            if category != current_category:
+                header = ttk.Frame(opt_frame)
+                header.pack(
+                    fill="x",
+                    pady=(0 if current_category is None else 10, 4),
+                )
+                header.columnconfigure(0, weight=1)
+                header.columnconfigure(2, weight=1)
+                ttk.Separator(header).grid(row=0, column=0, sticky="ew")
+                ttk.Label(
+                    header,
+                    text=category,
+                    anchor="center",
+                    style="OptionGroup.TLabel",
+                ).grid(row=0, column=1, padx=7)
+                ttk.Separator(header).grid(row=0, column=2, sticky="ew")
+                current_category = category
+
             match opt.get("default"):
                 case bool():
                     self.options[opt["name"]] = tkinter.BooleanVar(

@@ -19,6 +19,7 @@ class WeaponsData(BaseData):
         {
             "name": "gfl2_weapons",
             "label": "Weapons",
+            "category": "Others",
             "typespec": bool,
             "default": True,
             "help": "Log weapons on login",
@@ -47,7 +48,9 @@ class WeaponsData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = f"gfl2logger_weapons_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
+        filename = self.output_path(
+            f"gfl2logger_weapons_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
+        )
         cols = [
             "uid",
             "name",

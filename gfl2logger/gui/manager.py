@@ -70,6 +70,10 @@ class GUIManager:
 
     async def done(self) -> None:
         self.to_gui.put(Command(CommandType.SHUTDOWN, None))
+        # Signal-driven shutdown can reach done() while loop() is blocked in
+        # from_gui.get().  Wake that read so asyncio can close its worker thread
+        # and the frozen macOS app can exit cleanly.
+        self.from_gui.put(Command(CommandType.SHUTDOWN, None))
         self.subprocess.join(timeout=5)
         self.subprocess.terminate()
         self.log_handler.uninstall()

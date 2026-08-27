@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from mitmproxy import addonmanager
+from mitmproxy import addonmanager, ctx
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,10 @@ class BaseData:
 
     def append(self, b: bytes):
         self.data.append(b)
+
+    @staticmethod
+    def output_path(filename: str) -> Path:
+        return Path(ctx.options.confdir).joinpath(filename)
 
     async def export(self) -> None:
         for b in self.data:

@@ -17,7 +17,8 @@ class GuildMembersData(BaseData):
     OPTIONS = [
         {
             "name": "gfl2_guildmembers",
-            "label": "Platoon members",
+            "label": "Members",
+            "category": "Platoon",
             "typespec": bool,
             "default": True,
             "help": "Log Platoon members on login/Platoon page",
@@ -53,7 +54,7 @@ class GuildMembersData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = (
+        filename = self.output_path(
             f"gfl2logger_guildmembers_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
         )
         cols = [

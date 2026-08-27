@@ -2,19 +2,32 @@ name: release
 
 on:
   push:
+    branches:
+      - master
     tags:
-    - 'v[0-9].[0-9].[0-9]*'
+      - "v*.*.*"
+
+permissions:
+  contents: write
 
 jobs:
-  release:
-    runs-on: windows-latest
+  release-macos:
+    if: github.ref_type == 'tag' || github.event.head_commit.message == 'Release macOS port v0.1.0'
+    runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
-    - uses: pdm-project/setup-pdm@v4
-      with:
-        cache: true
-    - run: pdm install
-    - run: pdm run pyinstaller
-    - uses: softprops/action-gh-release@v2
-      with:
-        files: dist/*
+      - uses: actions/checkout@v4
+      - uses: pdm-project/setup-pdm@v4
+        with:
+          cache: true
+      - run: pdm install
+      - run: pdm run python -m unittest discover -s tests -v
+      - run: pdm run pyinstaller
+      - run: ditto -c -k --sequesterRsrc --keepParent dist/gfl2logger.app dist/gfl2logger-macos-arm64.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: gfl2logger for macOS ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+          target_commitish: ${{ github.sha }}
+          body_path: RELEASE_NOTES.md
+          files: dist/gfl2logger-macos-arm64.zip
+          fail_on_unmatched_files: true

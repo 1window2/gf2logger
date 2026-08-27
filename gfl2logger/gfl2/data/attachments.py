@@ -25,6 +25,7 @@ class AttachmentsData(BaseData):
         {
             "name": "gfl2_attachments",
             "label": "Attachments",
+            "category": "Others",
             "typespec": bool,
             "default": True,
             "help": "Log Attachments on login",
@@ -94,7 +95,7 @@ class AttachmentsData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = (
+        filename = self.output_path(
             f"gfl2logger_attachments_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
         )
         cols = [
