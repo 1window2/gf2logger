@@ -1,5 +1,7 @@
 # gfl2logger for macOS
 
+English | [한국어](README_KR.md)
+
 > [!IMPORTANT]
 > This repository is a macOS-only fork of
 > [blead/gfl2logger](https://github.com/blead/gfl2logger). Windows users should
@@ -8,6 +10,31 @@
 `gfl2logger` captures Girls' Frontline 2: Exilium network payloads and exports
 platoon-management data to local CSV and JSON files. This fork supports the
 iPhone/iPad App Store version of GF2 running on an Apple-silicon Mac.
+
+## Notice
+
+> [!WARNING]
+> `gf2logger` is currently ad-hoc signed and is not yet notarized with an Apple
+> Developer ID. On first launch, macOS may display a **“gf2logger” Not Opened**
+> alert stating that Apple could not verify the app is free of malware. Only
+> override this warning if you downloaded the app from this repository's
+> [official Releases page](https://github.com/1window2/gf2logger/releases) and
+> trust the source.
+>
+> To allow the app to run:
+>
+> 1. Try to open `gf2logger.app`, then click **Done** when the warning appears.
+> 2. Open **Apple menu > System Settings > Privacy & Security**.
+> 3. Scroll down to **Security**, find the message that `gf2logger` was blocked,
+>    and click **Open Anyway**.
+> 4. Authenticate with your login password or Touch ID, then click **Open** when
+>    macOS asks for confirmation again.
+>
+> The **Open Anyway** button is available for about one hour after the blocked
+> launch attempt. Once approved, macOS saves the app as an exception and future
+> launches work normally. See
+> [Apple's official instructions](https://support.apple.com/guide/mac-help/MCHLEAB3A043/26/mac/26.6.2)
+> for additional details.
 
 ## Requirements
 
@@ -54,19 +81,14 @@ The checkboxes are organized into two groups:
 
 | Option | Payload | Description | Format |
 | --- | ---: | --- | --- |
-| Platoon Profile | `21905` | Platoon identity, level, member count, announcements, and recruitment settings | JSON |
-| Members | `21917` | Member names, levels, contributions, scores, and login times | CSV |
+| Platoon Profile | `21905` | Platoon identity, level, member count, announcements, and recruitment information | JSON |
+| Members | `21917` | Member names, UIDs, levels, merit points, scores, and login times | CSV |
 | Activity | `21935` | Platoon objectives and recent member activity | JSON |
-| Updates | `21960` | Live platoon update messages, preserved by protobuf field number and as lossless raw hex | JSON |
+| Updates | `21960` | Records the Updates tab, including member joins/withdrawals/removals, and Daily supply rewards trigger | JSON |
 | Weapons | `11021` | Weapons owned by the current account | CSV |
 | Attachments | `11061` | Attachments owned by the current account | CSV |
 | Common Keys | `11138` | Common Keys owned by the current account | CSV |
 | Formations | `23201` | Saved formations | JSON |
-
-The Profile, Members, and Activity payloads have been validated against the
-App Store client on macOS. Updates are captured losslessly, but semantic field
-names will require a live `21960` sample because that server-push payload was
-not emitted during validation.
 
 ## How It Works
 
