@@ -22,8 +22,10 @@ semantic names can be added after a live `21960` server-push sample is observed.
 
 ## Installation
 
-Download `gfl2logger-macos-arm64.zip`, unzip it, then Control-click
-`gfl2logger.app` and choose **Open**. Approve **Mitmproxy Redirector** when
+Download `gf2logger-v0.1.0-macos-arm64.zip`, unzip it, then Control-click
+`gf2logger.app` and choose **Open**. Alternatively, open
+`gf2logger-v0.1.0-macos-arm64.dmg`, drag `gf2logger.app` to **Applications**,
+and open it there. Approve **Mitmproxy Redirector** when
 macOS requests Network Extension permission. Start the logger before starting
 GF2.
 

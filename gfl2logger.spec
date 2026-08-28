@@ -27,7 +27,7 @@ if is_macos:
         a.scripts,
         [],
         exclude_binaries=True,
-        name='gfl2logger',
+        name='gf2logger',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
@@ -47,13 +47,18 @@ if is_macos:
         strip=False,
         upx=True,
         upx_exclude=[],
-        name='gfl2logger',
+        name='gf2logger',
     )
     app = BUNDLE(
         coll,
-        name='gfl2logger.app',
+        name='gf2logger.app',
         icon='embed/icon.png',
-        bundle_identifier='org.gfl2logger.app',
+        bundle_identifier='org.gf2logger.app',
+        info_plist={
+            'CFBundleDisplayName': 'gf2logger',
+            'CFBundleShortVersionString': '0.1.0',
+            'CFBundleVersion': '0.1.0',
+        },
     )
 else:
     exe = EXE(

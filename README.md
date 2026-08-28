@@ -18,9 +18,12 @@ iPhone/iPad App Store version of GF2 running on an Apple-silicon Mac.
 
 ## Installation
 
-1. Download `gfl2logger-macos-arm64.zip` from
+1. Download `gf2logger-v0.1.0-macos-arm64.zip` or
+   `gf2logger-v0.1.0-macos-arm64.dmg` from
    [Releases](https://github.com/1window2/gf2logger/releases).
-2. Unzip it and Control-click `gfl2logger.app`.
+2. For the ZIP, unzip it and Control-click `gf2logger.app`. For the DMG, open
+   it, drag `gf2logger.app` to **Applications**, and Control-click the installed
+   app.
 3. Choose **Open**, then confirm **Open** in the Gatekeeper dialog.
 4. Approve **Mitmproxy Redirector** when macOS requests Network Extension
    permission.
@@ -83,7 +86,7 @@ pdm install
 pdm run pyinstaller
 ```
 
-The Apple-silicon build is created at `dist/gfl2logger.app`. To run directly
+The Apple-silicon build is created at `dist/gf2logger.app`. To run directly
 from source:
 
 ```sh
