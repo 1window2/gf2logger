@@ -2,8 +2,6 @@ name: release
 
 on:
   push:
-    branches:
-      - master
     tags:
       - "v*.*.*"
 
@@ -12,7 +10,6 @@ permissions:
 
 jobs:
   release-macos:
-    if: github.ref_type == 'tag' || github.event.head_commit.message == 'Release macOS port v0.1.0'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -25,19 +22,19 @@ jobs:
       - name: Package macOS artifacts
         run: |
           cd dist
-          COPYFILE_DISABLE=1 zip -qry gf2logger-v0.1.0-macos-arm64.zip gf2logger.app -x '*.DS_Store' -x '__MACOSX/*'
+          COPYFILE_DISABLE=1 zip -qry "gf2logger-${GITHUB_REF_NAME}-macos-arm64.zip" gf2logger.app -x '*.DS_Store' -x '__MACOSX/*'
           cd ..
           mkdir -p dist/dmg-root
           cp -R dist/gf2logger.app dist/dmg-root/
           ln -s /Applications dist/dmg-root/Applications
-          hdiutil create -volname gf2logger -srcfolder dist/dmg-root -ov -format UDZO dist/gf2logger-v0.1.0-macos-arm64.dmg
+          hdiutil create -volname gf2logger -srcfolder dist/dmg-root -ov -format UDZO "dist/gf2logger-${GITHUB_REF_NAME}-macos-arm64.dmg"
       - uses: softprops/action-gh-release@v2
         with:
-          name: gfl2logger for macOS ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
-          target_commitish: ${{ github.sha }}
+          name: gfl2logger for macOS ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
           files: |
-            dist/gf2logger-v0.1.0-macos-arm64.zip
-            dist/gf2logger-v0.1.0-macos-arm64.dmg
+            dist/gf2logger-${{ github.ref_name }}-macos-arm64.zip
+            dist/gf2logger-${{ github.ref_name }}-macos-arm64.dmg
+          overwrite_files: false
           fail_on_unmatched_files: true

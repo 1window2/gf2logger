@@ -9,6 +9,7 @@ from mitmproxy import ctx, log
 
 from generated.guild_members_pb2 import GuildMembers
 from gfl2logger.gfl2.data.base import BaseData
+from gfl2logger.utils.csv_safety import spreadsheet_safe
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,9 @@ class GuildMembersData(BaseData):
             for row in data["members"]:
                 yield {
                     "uid": row.get("uid"),
-                    "name": row.get("player", {}).get("playerInfo", {}).get("name"),
+                    "name": spreadsheet_safe(
+                        row.get("player", {}).get("playerInfo", {}).get("name")
+                    ),
                     "level": row.get("player", {}).get("playerInfo", {}).get("level"),
                     "weeklyMerit": row.get("weeklyMerit"),
                     "totalMerit": row.get("totalMerit"),
