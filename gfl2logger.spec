@@ -56,8 +56,8 @@ if is_macos:
         bundle_identifier='org.gf2logger.app',
         info_plist={
             'CFBundleDisplayName': 'gf2logger',
-            'CFBundleShortVersionString': '0.1.0',
-            'CFBundleVersion': '0.1.0',
+            'CFBundleShortVersionString': '0.1.1',
+            'CFBundleVersion': '0.1.1',
         },
     )
 else:

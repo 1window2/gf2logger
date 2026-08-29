@@ -1,33 +1,23 @@
-# gfl2logger for macOS v0.1.0
+# gfl2logger for macOS v0.1.1
 
-This is the first macOS release of `1window2/gfl2logger`. It is a macOS-only
-fork of [blead/gfl2logger](https://github.com/blead/gfl2logger), based on the
-original project's [v0.2.5 release](https://github.com/blead/gfl2logger/releases/tag/v0.2.5).
-Windows users should continue to use the original project.
+This patch release addresses three security findings. Updating from v0.1.0 is
+recommended.
 
-## Highlights
+## Security fixes
 
-- Native process-local capture of the App Store GF2 client (`SnqxExilium`) on
-  Apple-silicon Macs
-- Platoon Profile (`21905`), Members (`21917`), Activity (`21935`), and Updates
-  (`21960`) capture
-- Centered **Platoon** and **Others** groups for the eight payload options
-- CSV and JSON output under `~/gfl2logger`
-- Bundled, signed, and notarized Mitmproxy Redirector Network Extension
-- ARM64 `.app` packaging and macOS release automation
-
-Profile, Members, and Activity decoding were validated against live GF2
-traffic. Updates are captured losslessly by protobuf field number and raw hex;
-semantic names can be added after a live `21960` server-push sample is observed.
+- Bounded packet queues and payload reassembly by size, fragment count, and
+  timeout to prevent type-zero payload sequences from exhausting memory.
+- Neutralized formula-leading platoon member names in CSV exports so spreadsheet
+  applications treat them as text.
+- Restricted release publishing to version-tag pushes and disabled release asset
+  overwrites.
 
 ## Installation
 
-Download `gf2logger-v0.1.0-macos-arm64.zip`, unzip it, then Control-click
-`gf2logger.app` and choose **Open**. Alternatively, open
-`gf2logger-v0.1.0-macos-arm64.dmg`, drag `gf2logger.app` to **Applications**,
-and open it there. Approve **Mitmproxy Redirector** when
-macOS requests Network Extension permission. Start the logger before starting
-GF2.
+Download `gf2logger-v0.1.1-macos-arm64.zip` for the portable app, or
+`gf2logger-v0.1.1-macos-arm64.dmg` for drag-and-drop installation. Start
+`gf2logger` before GF2.
 
-The application is ad-hoc signed and is not yet Developer ID-notarized, so the
-first launch requires the Control-click **Open** flow.
+The application remains ad-hoc signed and is not yet Developer ID-notarized. If
+macOS blocks the first launch, follow the **Open Anyway** instructions in the
+[README](https://github.com/1window2/gf2logger#notice).

@@ -45,8 +45,8 @@ iPhone/iPad App Store version of GF2 running on an Apple-silicon Mac.
 
 ## Installation
 
-1. Download `gf2logger-v0.1.0-macos-arm64.zip` or
-   `gf2logger-v0.1.0-macos-arm64.dmg` from
+1. Download `gf2logger-v0.1.1-macos-arm64.zip` or
+   `gf2logger-v0.1.1-macos-arm64.dmg` from
    [Releases](https://github.com/1window2/gf2logger/releases).
 2. For the ZIP, unzip it and Control-click `gf2logger.app`. For the DMG, open
    it, drag `gf2logger.app` to **Applications**, and Control-click the installed
