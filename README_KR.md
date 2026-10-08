@@ -35,7 +35,7 @@
 ## 설치
 
 1. [Releases](https://github.com/1window2/gf2logger/releases)에서
-   `gf2logger-v0.1.1-macos-arm64.zip` 또는 `gf2logger-v0.1.1-macos-arm64.dmg`를 다운로드합니다.
+   `gf2logger-v0.1.2-macos-arm64.zip` 또는 `gf2logger-v0.1.2-macos-arm64.dmg`를 다운로드합니다.
 2. ZIP의 경우 압축을 푼 다음 `gf2logger.app`을 Control-클릭합니다.
    DMG의 경우 파일을 열고 `gf2logger.app`을 **응용 프로그램**으로 드래그한 다음, 설치된 앱을 Control-클릭합니다.
 3. **열기**를 선택한 다음 Gatekeeper 대화상자에서 **열기**를 다시 확인합니다.
