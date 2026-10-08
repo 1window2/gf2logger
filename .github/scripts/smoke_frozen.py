@@ -110,7 +110,11 @@ def diagnose_windows() -> None:
             "Where-Object { $_.Name -match 'redirector|divert' } | "
             "Select-Object ProcessId,ParentProcessId,Name,ExecutablePath | Format-List; "
             "Get-ChildItem $env:TEMP -Filter '_MEI*' -ErrorAction SilentlyContinue | "
-            "Select-Object FullName | Format-List",
+            "ForEach-Object { Get-ChildItem $_.FullName -Recurse -File } | "
+            "ForEach-Object { $path = $_.FullName; "
+            "try { Remove-Item $path -Force -ErrorAction Stop; "
+            "Write-Output \"left behind, deletable now: $path\" } "
+            "catch { Write-Output \"left behind, still locked: $path\" } }",
         ],
         capture_output=True,
         text=True,
