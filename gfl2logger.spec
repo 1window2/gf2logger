@@ -71,19 +71,20 @@ if is_macos:
         },
     )
 else:
+    # A folder build rather than a single file. A single-file build unpacks itself into
+    # a temporary directory on every start and removes it on exit, but the WinDivert
+    # driver file loaded from there stays in use, so the removal fails and the launcher
+    # is left showing a warning. A folder build has nothing to clean up.
     exe = EXE(
         pyz,
         a.scripts,
-        a.binaries,
-        a.datas,
         [('O', None, 'OPTION'), ('O', None, 'OPTION')],
+        exclude_binaries=True,
         name='gfl2logger',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
         upx=True,
-        upx_exclude=[],
-        runtime_tmpdir=None,
         console=False,
         disable_windowed_traceback=False,
         argv_emulation=False,
@@ -91,4 +92,13 @@ else:
         codesign_identity=None,
         entitlements_file=None,
         icon=icon,
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name='gfl2logger',
     )

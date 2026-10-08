@@ -11,7 +11,7 @@
 
 | 플랫폼 | 게임 클라이언트 | 다운로드 (v0.3.0) |
 | --- | --- | --- |
-| **Windows** (x64) | PC 클라이언트 | [`gfl2logger-v0.3.0-windows-x64.exe`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-windows-x64.exe) |
+| **Windows** (x64) | PC 클라이언트 | [`gfl2logger-v0.3.0-windows-x64.zip`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-windows-x64.zip) |
 | **macOS** (Apple Silicon) | Mac App Store의 iPhone/iPad 버전 | [`gfl2logger-v0.3.0-macos-arm64.dmg`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.dmg) · [`gfl2logger-v0.3.0-macos-arm64.zip`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.zip) |
 
 이전 버전과 릴리스 노트는 [Releases](../../releases) 페이지에 있습니다.
@@ -23,13 +23,18 @@
 
 ### Windows
 
-1. `.exe`를 내려받아 쓰기 권한이 있는 폴더에 둡니다. 내보낸 파일은 프로그램을
-   실행한 폴더에 저장됩니다.
-2. 실행합니다. 실행 파일에 코드 서명이 없어 Windows SmartScreen이 **Windows의
-   PC 보호** 화면을 표시할 수 있습니다. 이 저장소의 Releases 페이지에서 받은
-   파일이라면 **추가 정보 > 실행**을 선택합니다.
+1. `.zip`을 내려받아 쓰기 권한이 있는 폴더에 압축을 풉니다. `_internal` 폴더는
+   `gfl2logger.exe`와 같은 위치에 그대로 둡니다.
+2. `gfl2logger.exe`를 실행합니다. 코드 서명이 없어 Windows SmartScreen이
+   **Windows의 PC 보호** 화면을 표시할 수 있습니다. 이 저장소의 Releases
+   페이지에서 받은 파일이라면 **추가 정보 > 실행**을 선택합니다.
 3. mitmproxy의 트래픽 리디렉터에 대해 Windows가 관리자 권한을 요청하면
    허용합니다.
+
+내보낸 파일은 프로그램을 실행한 폴더에 저장됩니다. 나중에 `WinDivert64.sys`가
+사용 중이라는 이유로 폴더를 삭제하거나 교체할 수 없다면 Windows를 다시 시작한 뒤
+시도하십시오. 캡처 드라이버는 프로그램을 닫은 뒤에도 로드된 상태로 남을 수
+있습니다.
 
 ### macOS
 
@@ -58,10 +63,12 @@
 2. 게임을 실행해 로그인합니다. 서클 데이터는 서클 페이지를 열면 수신됩니다.
 3. 게임이 지원 대상 응답을 받을 때마다 새 파일이 기록되고, 오른쪽 로그에 저장
    경로가 표시됩니다.
+4. 창을 닫으면 프로그램이 완전히 종료됩니다. 백그라운드에 남는 프로세스는
+   없습니다.
 
 | 플랫폼 | 내보낸 파일과 `gfl2logger.config.yaml`의 저장 위치 |
 | --- | --- |
-| Windows | 프로그램을 실행한 폴더(보통 `.exe`가 있는 폴더) |
+| Windows | 프로그램을 실행한 폴더(보통 `gfl2logger.exe`가 있는 폴더) |
 | macOS | `~/gfl2logger` |
 
 ### 내보내는 데이터
@@ -109,8 +116,8 @@ pdm install
 pdm run pyinstaller
 ```
 
-Windows에서는 `dist/gfl2logger.exe`, macOS에서는 `dist/gfl2logger.app`이
-생성됩니다. 소스에서 직접 실행하거나 테스트를 돌리려면 다음 명령을 사용합니다.
+Windows에서는 `dist/gfl2logger/gfl2logger.exe`, macOS에서는
+`dist/gfl2logger.app`이 생성됩니다. 소스에서 직접 실행하거나 테스트를 돌리려면 다음 명령을 사용합니다.
 
 ```sh
 pdm run protoc

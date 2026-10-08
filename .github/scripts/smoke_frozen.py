@@ -108,13 +108,7 @@ def diagnose_windows() -> None:
             "Select-Object Id,MainWindowTitle,Responding,StartTime | Format-List; "
             "Get-CimInstance Win32_Process | "
             "Where-Object { $_.Name -match 'redirector|divert' } | "
-            "Select-Object ProcessId,ParentProcessId,Name,ExecutablePath | Format-List; "
-            "Get-ChildItem $env:TEMP -Filter '_MEI*' -ErrorAction SilentlyContinue | "
-            "ForEach-Object { Get-ChildItem $_.FullName -Recurse -File } | "
-            "ForEach-Object { $path = $_.FullName; "
-            "try { Remove-Item $path -Force -ErrorAction Stop; "
-            "Write-Output \"left behind, deletable now: $path\" } "
-            "catch { Write-Output \"left behind, still locked: $path\" } }",
+            "Select-Object ProcessId,ParentProcessId,Name,ExecutablePath | Format-List",
         ],
         capture_output=True,
         text=True,

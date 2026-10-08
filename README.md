@@ -12,7 +12,7 @@ both.
 
 | Platform | Game client | Download (v0.3.0) |
 | --- | --- | --- |
-| **Windows** (x64) | PC client | [`gfl2logger-v0.3.0-windows-x64.exe`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-windows-x64.exe) |
+| **Windows** (x64) | PC client | [`gfl2logger-v0.3.0-windows-x64.zip`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-windows-x64.zip) |
 | **macOS** (Apple silicon) | iPhone/iPad version from the Mac App Store | [`gfl2logger-v0.3.0-macos-arm64.dmg`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.dmg) · [`gfl2logger-v0.3.0-macos-arm64.zip`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.zip) |
 
 Older versions and release notes are on the [Releases](../../releases) page.
@@ -24,13 +24,18 @@ it once the logger window is open.
 
 ### Windows
 
-1. Download the `.exe` and place it in a folder you can write to. Exported
-   files are saved in the folder the program is started from.
-2. Run it. The executable is not code-signed, so Windows SmartScreen may show
+1. Download the `.zip` and extract it to a folder you can write to. Keep the
+   `_internal` folder next to `gfl2logger.exe`.
+2. Run `gfl2logger.exe`. It is not code-signed, so Windows SmartScreen may show
    **Windows protected your PC**. If you downloaded it from this repository's
    Releases page, choose **More info > Run anyway**.
 3. If Windows asks for administrator permission for mitmproxy's traffic
    redirector, allow it.
+
+Exported files are saved in the folder the program is started from. If Windows
+refuses to delete or replace the folder later because `WinDivert64.sys` is in
+use, restart Windows first; the capture driver can stay loaded after the
+program has closed.
 
 ### macOS
 
@@ -60,10 +65,12 @@ mitmproxy project.
 2. Start the game and log in. Open the Platoon pages to request Platoon data.
 3. Each time the game receives one of the supported responses, a new file is
    written and the log on the right shows its path.
+4. Closing the window ends the program completely. Nothing keeps running in the
+   background.
 
 | Platform | Exports and `gfl2logger.config.yaml` are saved in |
 | --- | --- |
-| Windows | The folder the program is started from, normally the one containing the `.exe` |
+| Windows | The folder the program is started from, normally the one containing `gfl2logger.exe` |
 | macOS | `~/gfl2logger` |
 
 ### Exported Data
@@ -111,8 +118,8 @@ pdm install
 pdm run pyinstaller
 ```
 
-This creates `dist/gfl2logger.exe` on Windows and `dist/gfl2logger.app` on
-macOS. To run from source or run the tests:
+This creates `dist/gfl2logger/gfl2logger.exe` on Windows and
+`dist/gfl2logger.app` on macOS. To run from source or run the tests:
 
 ```sh
 pdm run protoc

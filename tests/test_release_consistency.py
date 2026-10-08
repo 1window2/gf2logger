@@ -6,7 +6,7 @@ from gfl2logger.utils.version import VERSION
 
 TAG = f"v{VERSION}"
 ASSETS = (
-    f"gfl2logger-{TAG}-windows-x64.exe",
+    f"gfl2logger-{TAG}-windows-x64.zip",
     f"gfl2logger-{TAG}-macos-arm64.dmg",
     f"gfl2logger-{TAG}-macos-arm64.zip",
 )
@@ -73,6 +73,13 @@ class ReleaseConsistencyTests(unittest.TestCase):
         build = read(".github/workflows/build.yml")
         self.assertIn("windows-latest", build)
         self.assertIn("macos-15", build)
+
+    def test_windows_is_not_built_as_a_self_extracting_single_file(self) -> None:
+        # The WinDivert driver stays loaded from the program's own files; a single-file
+        # build could never remove its temporary directory on exit.
+        spec = read("gfl2logger.spec")
+        self.assertEqual(spec.count("exclude_binaries=True"), 2)
+        self.assertEqual(spec.count("COLLECT("), 2)
 
 
 if __name__ == "__main__":
