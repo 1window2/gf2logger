@@ -31,7 +31,7 @@ class TkWindow(tkinter.Tk):
                 pass
 
         super().__init__()
-        self.title("gf2logger")
+        self.title("gfl2logger")
         self.minsize(600, 240)
 
         if ICON_PNG is not None:

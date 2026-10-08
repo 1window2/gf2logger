@@ -324,9 +324,9 @@ class GuiManagerTests(unittest.IsolatedAsyncioTestCase):
         ctx.master.shutdown.assert_called_once()
 
 
-class ReleaseWorkflowOrderTests(unittest.TestCase):
+class BuildWorkflowOrderTests(unittest.TestCase):
     def test_protobuf_modules_are_generated_before_the_tests_run(self) -> None:
-        workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
+        workflow = Path(".github/workflows/build.yml").read_text(encoding="utf-8")
 
         self.assertLess(
             workflow.index("pdm run protoc"),
