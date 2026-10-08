@@ -14,6 +14,9 @@ class FakeQueue:
     def put(self, item) -> None:
         self.items.append(item)
 
+    def put_nowait(self, item) -> None:
+        self.items.append(item)
+
 
 class FakeProcess:
     def __init__(self) -> None:

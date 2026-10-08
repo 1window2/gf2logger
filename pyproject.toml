@@ -20,7 +20,9 @@ getter = "gfl2logger.utils.version:get_version"
 [tool.pdm.scripts]
 _.env = { PROTO_DIR = "proto", GENERATED_DIR = "generated", PROTO_FILES = "proto/*.proto" }
 pre_protoc.call = "os:makedirs('${GENERATED_DIR}', exist_ok=True)"
-protoc = "python -m grpc_tools.protoc --proto_path=${PROTO_DIR} --python_out=${GENERATED_DIR} --pyi_out=${GENERATED_DIR} ${PROTO_FILES}"
+# Run through a shell: protoc only expands the proto/*.proto wildcard itself on Windows,
+# so on macOS the shell has to do it.
+protoc = { shell = "python -m grpc_tools.protoc --proto_path=${PROTO_DIR} --python_out=${GENERATED_DIR} --pyi_out=${GENERATED_DIR} ${PROTO_FILES}" }
 pre_pyinstaller = "pdm run protoc"
 pyinstaller = "pyinstaller --clean gfl2logger.spec"
 

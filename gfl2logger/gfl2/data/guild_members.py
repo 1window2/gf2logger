@@ -1,11 +1,10 @@
 import asyncio
-import csv
 import logging
 from collections.abc import Generator
 from typing import Any
 
 from google.protobuf import json_format
-from mitmproxy import ctx, log
+from mitmproxy import ctx
 
 from generated.guild_members_pb2 import GuildMembers
 from gfl2logger.gfl2.data.base import BaseData
@@ -41,7 +40,7 @@ class GuildMembersData(BaseData):
         log_time_8601 = self.log_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         for data in self.to_raw_dicts():
-            for row in data["members"]:
+            for row in data.get("members", []):
                 yield {
                     "uid": row.get("uid"),
                     "name": spreadsheet_safe(
@@ -57,9 +56,6 @@ class GuildMembersData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = self.output_path(
-            f"gfl2logger_guildmembers_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
-        )
         cols = [
             "uid",
             "name",
@@ -71,13 +67,4 @@ class GuildMembersData(BaseData):
             "lastLogin",
             "logTime",
         ]
-        data = self.to_dicts()
-
-        try:
-            with open(filename, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
-                writer.writeheader()
-                writer.writerows(data)
-            logger.log(log.ALERT, f"Guild members data written to {filename}")
-        except OSError as e:
-            logger.error(f"Failed to write to {filename}, error={e}")
+        self.write_csv("guildmembers", "Guild members", cols, self.to_dicts())

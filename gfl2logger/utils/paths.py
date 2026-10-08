@@ -6,6 +6,8 @@ import platform
 import sys
 from pathlib import Path
 
+CONFIG_FILENAME = "gfl2logger.config.yaml"
+
 
 def default_data_dir(
     *,

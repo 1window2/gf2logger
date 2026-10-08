@@ -1,7 +1,7 @@
 import functools
 import multiprocessing
+import queue
 import signal
-import threading
 import tkinter
 import ctypes
 from idlelib import tooltip
@@ -13,6 +13,9 @@ from gfl2logger.gui.command import Command, CommandType
 from gfl2logger.gui.log_window import LogWindow
 
 logger = multiprocessing.get_logger()
+
+POLL_INTERVAL_MS = 50
+MAX_COMMANDS_PER_POLL = 100
 
 
 class TkWindow(tkinter.Tk):
@@ -36,9 +39,8 @@ class TkWindow(tkinter.Tk):
 
         # exit flow: (tk) self.quit -> (tk) from_gui:SHUTDOWN
         #   -> (main) master.shutdown -> (main) manager.done -> (main) to_gui:SHUTDOWN
-        #   -> (tk thread) <<Destroy>> -> (tk) self.destroy
+        #   -> (tk) pump -> (tk) self.destroy
         self.protocol("WM_DELETE_WINDOW", self.quit)
-        self.bind("<<Destroy>>", self.destroy)
 
         opt_frame = ttk.Frame(self, padding=10)
         opt_frame.pack(side="left", fill="y")
@@ -116,9 +118,29 @@ class TkWindow(tkinter.Tk):
         super().destroy()
 
 
-def loop(window: TkWindow, to_gui: multiprocessing.Queue) -> None:
-    while window.active:
-        cmd = to_gui.get()
+def parent_is_alive() -> bool:
+    parent = multiprocessing.parent_process()
+    return parent is None or parent.is_alive()
+
+
+def pump(window: TkWindow, to_gui: "multiprocessing.Queue[Command]") -> None:
+    """Apply queued commands on the Tk main thread.
+
+    Tk must only be driven from the thread that created it, which matters most on
+    macOS, so the queue is polled from a timer instead of a reader thread.
+    """
+    if not parent_is_alive():
+        # The proxy is gone, so nothing will ever answer SHUTDOWN: closing the window
+        # would only hide it and leave this process behind.
+        window.active = False
+        window.destroy()
+        return
+
+    for _ in range(MAX_COMMANDS_PER_POLL):
+        try:
+            cmd = to_gui.get_nowait()
+        except queue.Empty:
+            break
         match cmd.type:
             case CommandType.LOG:
                 window.rpc_write_log(cmd.content)
@@ -126,12 +148,14 @@ def loop(window: TkWindow, to_gui: multiprocessing.Queue) -> None:
                 window.rpc_set_options(cmd.content)
             case CommandType.SHUTDOWN:
                 window.active = False
-                window.event_generate("<<Destroy>>")
-                break
+                window.destroy()
+                return
             case _:
                 logger.warning(
                     f"Unrecognized command to gui, cmd.type={cmd.type}, cmd.content={cmd.content}"
                 )
+
+    window.after(POLL_INTERVAL_MS, pump, window, to_gui)
 
 
 def draw_window(
@@ -149,7 +173,5 @@ def draw_window(
     signal.signal(signal.SIGINT, _sigint)
     signal.signal(signal.SIGTERM, _sigterm)
 
-    t = threading.Thread(target=loop, args=(window, to_gui), daemon=True)
-    t.start()
+    window.after(0, pump, window, to_gui)
     window.mainloop()
-    t.join(timeout=3)

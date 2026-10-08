@@ -13,36 +13,53 @@ MAX_MESSAGE_QUEUE_ITEMS = 16
 MAX_PAYLOAD_QUEUE_ITEMS = 128
 MAX_INPUT_CHUNK_BYTES = 1024 * 1024
 REASSEMBLY_TIMEOUT_SECONDS = 30.0
+MESSAGE_HEADER_BYTES = 5
+PAYLOAD_HEADER_BYTES = 4
+LOG_PREVIEW_BYTES = 32
+
+
+class PayloadError(ValueError):
+    """Raised when a payload header does not describe the bytes that follow it."""
+
+
+def _preview(b: bytes | bytearray | memoryview) -> str:
+    # Malformed input can be a whole 64 KiB message; logging all of it would flood the GUI.
+    head = bytes(b[:LOG_PREVIEW_BYTES]).hex()
+    return head + "..." if len(b) > LOG_PREVIEW_BYTES else head
 
 
 class Payload:
-    def __init__(self, b: bytearray, msg_id=-1):
-        if len(b) < 4:
-            raise Exception(
-                f"cannot construct payload with less than 4 bytes, b={b.hex()}"
+    def __init__(self, b: bytes | bytearray | memoryview, msg_id=-1):
+        if len(b) < PAYLOAD_HEADER_BYTES:
+            raise PayloadError(
+                f"cannot construct payload with less than 4 bytes, b={_preview(b)}"
             )
         self.msg_id = msg_id
         self.end_of_msg = False
         self.type = int.from_bytes(b[0:2], "little")
-        self.len = int.from_bytes(b[2:4], "little") + 4
+        self.len = int.from_bytes(b[2:4], "little") + PAYLOAD_HEADER_BYTES
         if self.len > len(b):
-            raise Exception(
-                f"not enough data to construct payload, expected_len={self.len}, len(b)={len(b)}, b={b.hex()}"
+            raise PayloadError(
+                f"not enough data to construct payload, expected_len={self.len}, len(b)={len(b)}, b={_preview(b)}"
             )
-        self.data = bytes(b[4 : self.len])
+        self.data = bytes(b[PAYLOAD_HEADER_BYTES : self.len])
 
     @classmethod
-    def from_sequence(cls, b: bytearray, msg_id=-1) -> Generator[Self]:
+    def from_sequence(
+        cls, b: bytes | bytearray | memoryview, msg_id=-1
+    ) -> Generator[Self]:
+        # A view lets each payload be cut out without first copying the rest of the message.
+        view = memoryview(b)
         i = 0
         try:
-            while i < len(b):
-                payload = cls(b[i:], msg_id)
+            while i < len(view):
+                payload = cls(view[i:], msg_id)
                 i += payload.len
-                if i >= len(b):
+                if i >= len(view):
                     payload.end_of_msg = True
                 yield payload
-        except Exception as e:
-            logger.error(f"Malformed payload, exception={e}")
+        except PayloadError as e:
+            logger.error("Malformed payload, exception=%s", e)
 
 
 class GFL2Parser:
@@ -65,9 +82,11 @@ class GFL2Parser:
         )
 
     def stop(self) -> None:
+        # Only the input side is closed here. Chunks that are already queued are still
+        # parsed, and parse_message closes the payload queue once it has drained them, so
+        # the last message of a flow is not lost when the connection closes right after it.
         self.active = False
         self.msg_queue.shutdown()
-        self.payload_queue.shutdown()
 
     async def on_message(self, content: bytes) -> None:
         if len(content) > MAX_INPUT_CHUNK_BYTES:
@@ -77,52 +96,37 @@ class GFL2Parser:
                 MAX_INPUT_CHUNK_BYTES,
             )
             return
-        await self.msg_queue.put(content)
+        try:
+            await self.msg_queue.put(content)
+        except asyncio.QueueShutDown:
+            pass
 
     async def parse_message(self) -> None:
         buffer = bytearray()
-        total_len = 0
-        msg_id = -1
 
-        while self.active:
-            try:
-                content = await self.msg_queue.get()
-            except asyncio.QueueShutDown:
-                break
-
-            buffer.extend(content)
-
+        try:
             while True:
-                if total_len == 0 and len(buffer) < 5:
-                    logger.warning(
-                        f"Message skipped due to insufficient length, buffer={buffer.hex()}"
-                    )
-                    buffer.clear()
-                    break
+                content = await self.msg_queue.get()
+                buffer.extend(content)
 
-                # start of new messsage
-                if total_len == 0:
+                # TCP chunk boundaries are not message boundaries: a chunk may end inside
+                # a header or a body, so incomplete bytes stay buffered for the next chunk.
+                while len(buffer) >= MESSAGE_HEADER_BYTES:
                     msg_id = int.from_bytes(buffer[0:3], "little")
-                    total_len = int.from_bytes(buffer[3:5], "little") + 5
+                    total_len = (
+                        int.from_bytes(buffer[3:5], "little") + MESSAGE_HEADER_BYTES
+                    )
+                    if total_len > len(buffer):
+                        break
 
-                # wait for more data
-                if total_len > len(buffer):
-                    break
-
-                for payload in Payload.from_sequence(buffer[5:total_len], msg_id):
-                    await self.payload_queue.put(payload)
-
-                # end of mesage
-                if total_len == len(buffer):
-                    buffer.clear()
-                    total_len = 0
-                    msg_id = -1
-                    break
-
-                # jump to next message
-                buffer = buffer[total_len:]
-                total_len = 0
-                msg_id = -1
+                    message = bytes(buffer[MESSAGE_HEADER_BYTES:total_len])
+                    del buffer[:total_len]
+                    for payload in Payload.from_sequence(message, msg_id):
+                        await self.payload_queue.put(payload)
+        except asyncio.QueueShutDown:
+            pass
+        finally:
+            self.payload_queue.shutdown()
 
     async def _export_data(self, data: BaseData) -> None:
         try:
@@ -161,7 +165,11 @@ class GFL2Parser:
 
     async def _process_payload(self, payload: Payload) -> None:
         logger.debug(
-            f"PLD: msg_id={payload.msg_id}, eom={payload.end_of_msg}, type={payload.type}, len={payload.len}"
+            "PLD: msg_id=%d, eom=%s, type=%d, len=%d",
+            payload.msg_id,
+            payload.end_of_msg,
+            payload.type,
+            payload.len,
         )
 
         if self._pending_payload is not None and self._pending_data is not None:
@@ -201,11 +209,24 @@ class GFL2Parser:
         self._pending_started_at = asyncio.get_running_loop().time()
 
     async def parse_payload(self) -> None:
-        while self.active:
-            try:
-                payload = await self._next_payload()
-            except asyncio.QueueShutDown:
-                break
-            if payload is None:
-                continue
-            await self._process_payload(payload)
+        try:
+            while True:
+                try:
+                    payload = await self._next_payload()
+                except asyncio.QueueShutDown:
+                    break
+                if payload is None:
+                    continue
+                try:
+                    await self._process_payload(payload)
+                except Exception:
+                    # One bad payload must not end this task: the queues are bounded, so a
+                    # dead consumer would block on_message and stall the game connection.
+                    logger.exception(
+                        "Unable to process payload, type=%d", payload.type
+                    )
+                    self._clear_pending()
+        finally:
+            # If this consumer ever stops, release the producers instead of blocking them.
+            self.msg_queue.shutdown(immediate=True)
+            self.payload_queue.shutdown(immediate=True)
