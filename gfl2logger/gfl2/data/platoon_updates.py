@@ -1,9 +1,8 @@
 import asyncio
-import json
 import logging
 from typing import Any
 
-from mitmproxy import ctx, log
+from mitmproxy import ctx
 
 from gfl2logger.gfl2.data.base import BaseData
 from gfl2logger.gfl2.protobuf_wire import WireDecodeError, decode_message
@@ -39,12 +38,4 @@ class PlatoonUpdatesData(BaseData):
         return decoded
 
     def to_json(self) -> None:
-        filename = self.output_path(
-            f"gfl2logger_platoonupdates_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.json"
-        )
-        try:
-            with open(filename, "w", encoding="utf-8") as output:
-                json.dump(self.to_dicts(), output, ensure_ascii=False, indent=2)
-            logger.log(log.ALERT, f"Platoon updates data written to {filename}")
-        except OSError as error:
-            logger.error(f"Failed to write to {filename}, error={error}")
+        self.write_json("platoonupdates", "Platoon updates", self.to_dicts())

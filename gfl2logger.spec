@@ -1,7 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import platform
+import re
+from pathlib import Path
 
+
+# Single source of truth for the bundle version, so the app's Info.plist cannot drift
+# from the version the program reports.
+version = re.search(
+    r'^VERSION = "([^"]+)"',
+    Path(SPECPATH, 'gfl2logger', 'utils', 'version.py').read_text(encoding='utf-8'),
+    re.MULTILINE,
+).group(1)
 
 is_macos = platform.system() == 'Darwin'
 icon = 'embed/icon.png' if is_macos else 'embed/icon.ico'
@@ -56,8 +66,8 @@ if is_macos:
         bundle_identifier='org.gf2logger.app',
         info_plist={
             'CFBundleDisplayName': 'gf2logger',
-            'CFBundleShortVersionString': '0.1.1',
-            'CFBundleVersion': '0.1.1',
+            'CFBundleShortVersionString': version,
+            'CFBundleVersion': version,
         },
     )
 else:

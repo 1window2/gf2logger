@@ -1,10 +1,9 @@
 import asyncio
-import json
 import logging
 from typing import Any
 
 from google.protobuf import json_format
-from mitmproxy import ctx, log
+from mitmproxy import ctx
 
 from generated.platoon_activity_pb2 import PlatoonActivityResponse
 from gfl2logger.gfl2.data.base import BaseData
@@ -42,12 +41,4 @@ class PlatoonActivityData(BaseData):
         return result
 
     def to_json(self) -> None:
-        filename = self.output_path(
-            f"gfl2logger_platoonactivity_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.json"
-        )
-        try:
-            with open(filename, "w", encoding="utf-8") as output:
-                json.dump(self.to_dict(), output, ensure_ascii=False, indent=2)
-            logger.log(log.ALERT, f"Platoon activity data written to {filename}")
-        except OSError as error:
-            logger.error(f"Failed to write to {filename}, error={error}")
+        self.write_json("platoonactivity", "Platoon activity", self.to_dict())

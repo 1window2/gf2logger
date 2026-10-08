@@ -1,12 +1,11 @@
 import asyncio
-import csv
 import itertools
 import logging
 from collections.abc import Generator, Iterable
 from typing import Any
 
 from google.protobuf import json_format
-from mitmproxy import ctx, log
+from mitmproxy import ctx
 
 from embed import (
     ATTACHMENT_EFFECTS,
@@ -74,7 +73,7 @@ class AttachmentsData(BaseData):
 
     def to_dicts(self) -> Generator[dict[str, Any]]:
         for data in self.to_raw_dicts():
-            for row in data["attachments"]:
+            for row in data.get("attachments", []):
                 part_id = row.get("partId")
                 yield {
                     "uid": row.get("uid"),
@@ -95,9 +94,6 @@ class AttachmentsData(BaseData):
                 }
 
     def to_csv(self) -> None:
-        filename = self.output_path(
-            f"gfl2logger_attachments_{self.log_time.strftime('%Y%m%dT%H%M%SZ')}.csv"
-        )
         cols = [
             "uid",
             "name",
@@ -109,13 +105,4 @@ class AttachmentsData(BaseData):
             "isLocked",
             "weaponUid",
         ]
-        data = self.to_dicts()
-
-        try:
-            with open(filename, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
-                writer.writeheader()
-                writer.writerows(data)
-            logger.log(log.ALERT, f"Attachments data written to {filename}")
-        except OSError as e:
-            logger.error(f"Failed to write to {filename}, error={e}")
+        self.write_csv("attachments", "Attachments", cols, self.to_dicts())
