@@ -252,6 +252,26 @@ class GuiPumpTests(unittest.TestCase):
         self.assertEqual(window.scheduled, 0)
         self.assertEqual(window.logs, [])
 
+    def test_closing_the_window_notifies_the_proxy_and_closes_immediately(self) -> None:
+        class ClosableWindow:
+            def __init__(self) -> None:
+                self.active = True
+                self.from_gui: queue.Queue = queue.Queue()
+                self.destroyed = 0
+
+            def destroy(self) -> None:
+                self.destroyed += 1
+
+        closing = ClosableWindow()
+
+        gui_window.TkWindow.quit(closing)
+        gui_window.TkWindow.quit(closing)
+
+        self.assertEqual(closing.from_gui.get_nowait().type, CommandType.SHUTDOWN)
+        self.assertTrue(closing.from_gui.empty())
+        self.assertEqual(closing.destroyed, 1)
+        self.assertFalse(closing.active)
+
     def test_window_closes_itself_when_the_proxy_process_is_gone(self) -> None:
         window = FakeWindow()
 
@@ -288,6 +308,7 @@ class GuiManagerTests(unittest.IsolatedAsyncioTestCase):
         manager = gui_manager.GUIManager.__new__(gui_manager.GUIManager)
         manager.from_gui = queue.Queue()
         manager.subprocess = DyingProcess()
+        manager.start_exit_watchdog = lambda process: None
 
         with (
             mock.patch.object(gui_manager, "GUI_POLL_SECONDS", 0.01),
@@ -296,6 +317,90 @@ class GuiManagerTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(manager.loop(), timeout=5)
 
         ctx.master.shutdown.assert_called_once()
+
+    def test_process_exits_once_the_window_process_is_gone(self) -> None:
+        events: list[object] = []
+        window_process = object()
+
+        gui_manager.exit_when_window_is_gone(
+            window_process,
+            grace=0,
+            wait=lambda process: events.append(("waited for", process)),
+            terminate=lambda code: events.append(("exit", code)),
+        )
+
+        self.assertEqual(events, [("waited for", window_process), ("exit", 0)])
+
+    async def test_watchdog_is_armed_when_the_window_starts(self) -> None:
+        class DeadProcess:
+            def start(self) -> None:
+                pass
+
+            def is_alive(self) -> bool:
+                return False
+
+        manager = gui_manager.GUIManager.__new__(gui_manager.GUIManager)
+        manager.from_gui = queue.Queue()
+        manager.subprocess = DeadProcess()
+        watched: list[object] = []
+        manager.start_exit_watchdog = watched.append
+
+        with mock.patch.object(gui_manager, "ctx"):
+            await asyncio.wait_for(manager.loop(), timeout=5)
+
+        self.assertEqual(watched, [manager.subprocess])
+
+    async def test_window_starts_before_the_proxy_and_closes_after_it(self) -> None:
+        events: list[str] = []
+
+        class Gui:
+            def start(self) -> None:
+                events.append("window started")
+
+            def close(self) -> None:
+                events.append("window closed")
+
+        async def run_proxy() -> None:
+            # Stands in for mitmproxy's run(), which may sit in server set-up for a
+            # long time before the running hook fires.
+            events.append("proxy running")
+
+        await gui_manager.run_with_window(Gui(), run_proxy)
+
+        self.assertEqual(events, ["window started", "proxy running", "window closed"])
+
+    async def test_window_is_closed_even_if_the_proxy_fails(self) -> None:
+        events: list[str] = []
+
+        class Gui:
+            def start(self) -> None:
+                events.append("window started")
+
+            def close(self) -> None:
+                events.append("window closed")
+
+        async def run_proxy() -> None:
+            raise RuntimeError("redirector failed")
+
+        with self.assertRaises(RuntimeError):
+            await gui_manager.run_with_window(Gui(), run_proxy)
+
+        self.assertEqual(events, ["window started", "window closed"])
+
+    async def test_window_is_started_only_once(self) -> None:
+        manager = gui_manager.GUIManager.__new__(gui_manager.GUIManager)
+        started: list[object] = []
+
+        def create_task(coroutine):
+            coroutine.close()
+            started.append(coroutine)
+            return object()
+
+        with mock.patch.object(gui_manager.asyncio_utils, "create_task", create_task):
+            manager.start()
+            await manager.running()
+
+        self.assertEqual(len(started), 1)
 
     async def test_failed_command_keeps_the_window_able_to_quit(self) -> None:
         class AliveProcess:
@@ -308,6 +413,7 @@ class GuiManagerTests(unittest.IsolatedAsyncioTestCase):
         manager = gui_manager.GUIManager.__new__(gui_manager.GUIManager)
         manager.from_gui = queue.Queue()
         manager.subprocess = AliveProcess()
+        manager.start_exit_watchdog = lambda process: None
         manager.from_gui.put(Command(CommandType.SAVE_OPTIONS, None))
         manager.from_gui.put(Command(CommandType.SHUTDOWN, None))
 

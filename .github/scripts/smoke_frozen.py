@@ -1,27 +1,28 @@
 """Start the packaged app, check that it stays up without multiplying, then close it.
 
-Used by CI. On Windows the window process is asked to close the way a user would close
-it; elsewhere the app receives SIGTERM. Either way every process has to be gone
-afterwards.
+Used by CI. On Windows the window is asked to close the way its close button does; on
+macOS the window process is killed outright, like a crash. Either way every process has
+to be gone shortly afterwards: the program must never keep running without a window.
 """
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 
 STARTUP_SECONDS = 25
-SHUTDOWN_SECONDS = 60
+SHUTDOWN_SECONDS = 30
 # The proxy, the window process and their launcher/helper processes. A frozen build that
 # re-launches itself during multiprocessing start-up blows far past this.
 MAX_PROCESSES = 8
 WINDOWS = sys.platform == "win32"
-MACOS_PATTERN = "gfl2logger.app/Contents/MacOS/gfl2logger"
+WINDOW_PROCESS_MARK = "--multiprocessing-fork"
 
 
-def processes() -> list[dict]:
+def processes(executable: str) -> list[dict]:
     """Return pid, parent pid and command line of every running app process."""
     if WINDOWS:
         listing = subprocess.run(
@@ -54,7 +55,8 @@ def processes() -> list[dict]:
     found = []
     for line in listing.splitlines():
         pid, parent, command = line.split(None, 2)
-        if MACOS_PATTERN in command:
+        # Match the program itself, not tools that merely mention its path.
+        if command.startswith(executable):
             found.append({"pid": int(pid), "parent": int(parent), "command": command})
     return found
 
@@ -64,30 +66,56 @@ def describe(found: list[dict]) -> None:
         print(f"  pid={item['pid']} parent={item['parent']} {item['command']}")
 
 
-def force_stop(process: subprocess.Popen) -> None:
+def window_processes(found: list[dict]) -> list[dict]:
+    # The window lives in the multiprocessing child.
+    return [item for item in found if WINDOW_PROCESS_MARK in item["command"]]
+
+
+def force_stop(process: subprocess.Popen, executable: str) -> None:
     if WINDOWS:
         subprocess.run(
             ["taskkill", "/F", "/T", "/IM", "gfl2logger.exe"], capture_output=True
         )
     else:
-        subprocess.run(["pkill", "-9", "-f", MACOS_PATTERN], capture_output=True)
+        for item in processes(executable):
+            try:
+                os.kill(item["pid"], signal.SIGKILL)
+            except ProcessLookupError:
+                pass
     process.wait(timeout=30)
 
 
-def close(process: subprocess.Popen, found: list[dict]) -> None:
-    if not WINDOWS:
-        process.terminate()
-        return
-    # The window lives in the multiprocessing child. Without /F, taskkill posts WM_CLOSE
-    # to that process, which is what clicking the window's close button does.
-    windows = [item for item in found if "--multiprocessing-fork" in item["command"]]
-    for item in windows:
-        result = subprocess.run(
-            ["taskkill", "/PID", str(item["pid"])], capture_output=True, text=True
-        )
-        print(f"close request to pid={item['pid']}: {result.stdout.strip()}")
-    if not windows:
-        print("no window process found to close")
+def close_window(found: list[dict]) -> None:
+    for item in window_processes(found):
+        if WINDOWS:
+            # Without /F, taskkill posts WM_CLOSE, which is what the close button does.
+            result = subprocess.run(
+                ["taskkill", "/PID", str(item["pid"])], capture_output=True, text=True
+            )
+            print(f"close request to pid={item['pid']}: {result.stdout.strip()}")
+        else:
+            os.kill(item["pid"], signal.SIGKILL)
+            print(f"killed window process pid={item['pid']}")
+
+
+def diagnose_windows() -> None:
+    report = subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            "Get-Process gfl2logger -ErrorAction SilentlyContinue | "
+            "Select-Object Id,MainWindowTitle,Responding,StartTime | Format-List; "
+            "Get-CimInstance Win32_Process | "
+            "Where-Object { $_.Name -match 'redirector|divert' } | "
+            "Select-Object ProcessId,ParentProcessId,Name,ExecutablePath | Format-List; "
+            "Get-ChildItem $env:TEMP -Filter '_MEI*' -ErrorAction SilentlyContinue | "
+            "Select-Object FullName | Format-List",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    print(report.stdout.strip() or report.stderr.strip())
 
 
 def main(executable: str) -> int:
@@ -97,7 +125,7 @@ def main(executable: str) -> int:
     process = subprocess.Popen([executable], cwd=workdir)
 
     time.sleep(STARTUP_SECONDS)
-    started = processes()
+    started = processes(executable)
     print(f"processes after {STARTUP_SECONDS}s: {len(started)}")
     describe(started)
     if process.poll() is not None:
@@ -105,21 +133,29 @@ def main(executable: str) -> int:
         return 1
     if not 2 <= len(started) <= MAX_PROCESSES:
         print(f"FAIL: expected 2..{MAX_PROCESSES} processes")
-        force_stop(process)
+        force_stop(process, executable)
+        return 1
+    if not window_processes(started):
+        print("FAIL: the window process is not running")
+        force_stop(process, executable)
         return 1
 
-    close(process, started)
-    deadline = time.monotonic() + SHUTDOWN_SECONDS
-    while time.monotonic() < deadline and processes():
-        time.sleep(1)
-    remaining = processes()
+    close_window(started)
+    closed_at = time.monotonic()
+    deadline = closed_at + SHUTDOWN_SECONDS
+    while time.monotonic() < deadline and processes(executable):
+        time.sleep(0.5)
+    remaining = processes(executable)
     if remaining:
         print(f"FAIL: {len(remaining)} processes still running after closing")
         describe(remaining)
-        force_stop(process)
+        if WINDOWS:
+            diagnose_windows()
+        force_stop(process, executable)
         return 1
 
-    print("OK: started, stayed bounded, and exited completely when closed")
+    elapsed = time.monotonic() - closed_at
+    print(f"OK: window shown, and every process was gone {elapsed:.1f}s after closing")
     return 0
 
 
