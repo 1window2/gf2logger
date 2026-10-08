@@ -1,129 +1,135 @@
-# gfl2logger for macOS
+# gfl2logger
 
 English | [한국어](README_KR.md)
 
-> [!IMPORTANT]
-> This repository is a macOS-only fork of
-> [blead/gfl2logger](https://github.com/blead/gfl2logger). Windows users should
-> download and use the [original Windows version](https://github.com/blead/gfl2logger/releases).
+`gfl2logger` reads the data that Girls' Frontline 2: Exilium receives from its
+servers and saves the parts worth keeping, such as Platoon rosters, activity,
+and your inventory, to local CSV and JSON files. It runs on **Windows** and
+**macOS** from one codebase, with the same features, options, and window on
+both.
 
-`gfl2logger` captures Girls' Frontline 2: Exilium network payloads and exports
-platoon-management data to local CSV and JSON files. This fork supports the
-iPhone/iPad App Store version of GF2 running on an Apple-silicon Mac.
+## Download
 
-## Notice
+| Platform | Game client | Download (v0.3.0) |
+| --- | --- | --- |
+| **Windows** (x64) | PC client | [`gfl2logger-v0.3.0-windows-x64.exe`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-windows-x64.exe) |
+| **macOS** (Apple silicon) | iPhone/iPad version from the Mac App Store | [`gfl2logger-v0.3.0-macos-arm64.dmg`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.dmg) · [`gfl2logger-v0.3.0-macos-arm64.zip`](../../releases/download/v0.3.0/gfl2logger-v0.3.0-macos-arm64.zip) |
 
-> [!WARNING]
-> `gf2logger` is currently ad-hoc signed and is not yet notarized with an Apple
-> Developer ID. On first launch, macOS may display a **“gf2logger” Not Opened**
-> alert stating that Apple could not verify the app is free of malware. Only
-> override this warning if you downloaded the app from this repository's
-> [official Releases page](https://github.com/1window2/gf2logger/releases) and
-> trust the source.
->
-> To allow the app to run:
->
-> 1. Try to open `gf2logger.app`, then click **Done** when the warning appears.
-> 2. Open **Apple menu > System Settings > Privacy & Security**.
-> 3. Scroll down to **Security**, find the message that `gf2logger` was blocked,
->    and click **Open Anyway**.
-> 4. Authenticate with your login password or Touch ID, then click **Open** when
->    macOS asks for confirmation again.
->
-> The **Open Anyway** button is available for about one hour after the blocked
-> launch attempt. Once approved, macOS saves the app as an exception and future
-> launches work normally. See
-> [Apple's official instructions](https://support.apple.com/guide/mac-help/MCHLEAB3A043/26/mac/26.6.2)
-> for additional details.
+Older versions and release notes are on the [Releases](../../releases) page.
 
-## Requirements
+## Getting Started
 
-- An Apple-silicon Mac
-- The iPhone/iPad version of Girls' Frontline 2: Exilium installed from the Mac
-  App Store
-- Permission to enable the bundled Mitmproxy Redirector Network Extension
+Start `gfl2logger` **before** the game. If the game is already running, restart
+it once the logger window is open.
 
-## Installation
+### Windows
 
-1. Download `gf2logger-v0.1.2-macos-arm64.zip` or
-   `gf2logger-v0.1.2-macos-arm64.dmg` from
-   [Releases](https://github.com/1window2/gf2logger/releases).
-2. For the ZIP, unzip it and Control-click `gf2logger.app`. For the DMG, open
-   it, drag `gf2logger.app` to **Applications**, and Control-click the installed
-   app.
-3. Choose **Open**, then confirm **Open** in the Gatekeeper dialog.
-4. Approve **Mitmproxy Redirector** when macOS requests Network Extension
-   permission.
+1. Download the `.exe` and place it in a folder you can write to. Exported
+   files are saved in the folder the program is started from.
+2. Run it. The executable is not code-signed, so Windows SmartScreen may show
+   **Windows protected your PC**. If you downloaded it from this repository's
+   Releases page, choose **More info > Run anyway**.
+3. If Windows asks for administrator permission for mitmproxy's traffic
+   redirector, allow it.
 
-If the redirector is not enabled automatically, open **System Settings >
-General > Login Items & Extensions > Network Extensions**, enable **Mitmproxy
-Redirector**, and relaunch `gfl2logger`.
+### macOS
 
-The application itself is currently ad-hoc signed rather than Developer
-ID-signed and notarized. Its bundled network redirector is separately signed
-and notarized by the mitmproxy project.
+1. Open the `.dmg` and drag `gfl2logger.app` to **Applications**, or unzip the
+   `.zip`.
+2. Open the app. It is ad-hoc signed and not notarized with an Apple Developer
+   ID, so the first launch is blocked with a **“gfl2logger” Not Opened** alert.
+   Click **Done**, open **System Settings > Privacy & Security**, scroll to
+   **Security**, and click **Open Anyway**. The button is available for about
+   an hour after the blocked attempt, and macOS remembers the exception
+   afterwards. See
+   [Apple's instructions](https://support.apple.com/guide/mac-help/MCHLEAB3A043/26/mac/26.6.2)
+   for details. Only do this for a copy downloaded from this repository's
+   Releases page.
+3. Approve **Mitmproxy Redirector** when macOS asks for Network Extension
+   permission. If it is not enabled automatically, turn it on under **System
+   Settings > General > Login Items & Extensions > Network Extensions** and
+   relaunch `gfl2logger`.
+
+The bundled network redirector is signed and notarized separately by the
+mitmproxy project.
 
 ## Usage
 
-1. Start `gfl2logger` before GF2. If GF2 is already running, restart it after
-   the logger is ready.
-2. Leave the desired payload checkboxes enabled.
-3. Start GF2 and open its Platoon pages to request the relevant data.
+1. Leave the checkboxes for the data you want enabled. **Save config** keeps
+   the selection for the next launch.
+2. Start the game and log in. Open the Platoon pages to request Platoon data.
+3. Each time the game receives one of the supported responses, a new file is
+   written and the log on the right shows its path.
 
-Exports and `gfl2logger.config.yaml` are written to `~/gfl2logger`.
-
-The checkboxes are organized into two groups:
-
-- **Platoon:** Platoon Profile, Members, Activity, Updates
-- **Others:** Weapons, Attachments, Common Keys, Formations
+| Platform | Exports and `gfl2logger.config.yaml` are saved in |
+| --- | --- |
+| Windows | The folder the program is started from, normally the one containing the `.exe` |
+| macOS | `~/gfl2logger` |
 
 ### Exported Data
 
-| Option | Payload | Description | Format |
-| --- | ---: | --- | --- |
-| Platoon Profile | `21905` | Platoon identity, level, member count, announcements, and recruitment information | JSON |
-| Members | `21917` | Member names, UIDs, levels, merit points, scores, and login times | CSV |
-| Activity | `21935` | Platoon objectives and recent member activity | JSON |
-| Updates | `21960` | Records the Updates tab, including member joins/withdrawals/removals, and Daily supply rewards trigger | JSON |
-| Weapons | `11021` | Weapons owned by the current account | CSV |
-| Attachments | `11061` | Attachments owned by the current account | CSV |
-| Common Keys | `11138` | Common Keys owned by the current account | CSV |
-| Formations | `23201` | Saved formations | JSON |
+The options are organized into two groups in the window.
+
+| Group | Option | Payload | Description | Received on | Format |
+| --- | --- | ---: | --- | --- | --- |
+| Platoon | Platoon Profile | `21905` | Platoon identity, level, member count, announcements, and recruitment information | Platoon pages | JSON |
+| Platoon | Members | `21917` | Member names, UIDs, levels, merit points, scores, and login times | Login, reconnection, Platoon pages | CSV |
+| Platoon | Activity | `21935` | Platoon objectives and recent member activity | Platoon pages | JSON |
+| Platoon | Updates | `21960` | The Updates tab: member joins, withdrawals, removals, and Daily supply reward triggers | Updates tab | JSON |
+| Others | Weapons | `11021` | Weapons owned by the current account | Login | CSV |
+| Others | Attachments | `11061` | Attachments owned by the current account | Login | CSV |
+| Others | Common Keys | `11138` | Common Keys owned by the current account | Login | CSV |
+| Others | Formations | `23201` | Saved formations | Login, reconnection | JSON |
+
+Files are named `gfl2logger_<type>_<UTC timestamp>.csv` or `.json`. Updates are
+recorded losslessly by protobuf field number and raw hex.
 
 ## How It Works
 
-Mitmproxy's local capture mode restricts interception to the GF2 executable,
-`SnqxExilium`. The logger reads server-to-client payloads without initiating or
-modifying game connections. TLS connections are passed through without
-decryption, so no mitmproxy certificate needs to be installed.
+mitmproxy's local capture mode limits interception to the game executable:
+`GF2_Exilium` on Windows and `SnqxExilium` on macOS. The logger only reads what
+the server sends to the client. It does not start or change any connection, and
+TLS connections pass through without being decrypted, so no certificate has to
+be installed.
+
+## Supported Clients
+
+- **Windows:** the PC client, confirmed to work in the Darkwinter and HaoPlay
+  regions.
+- **macOS:** the iPhone/iPad App Store version running on an Apple-silicon Mac.
+
+Other platforms and regions are untested. Suggestions about additional data,
+usage, and formats are welcome.
 
 ## Build from Source
 
-The project uses [PDM](https://pdm-project.org/) and Python 3.13:
+The project uses [PDM](https://pdm-project.org/) and Python 3.13. From a clone
+of this repository:
 
 ```sh
-git clone https://github.com/1window2/gf2logger.git
-cd gf2logger
 pdm install
 pdm run pyinstaller
 ```
 
-The Apple-silicon build is created at `dist/gf2logger.app`. To run directly
-from source:
+This creates `dist/gfl2logger.exe` on Windows and `dist/gfl2logger.app` on
+macOS. To run from source or run the tests:
 
 ```sh
 pdm run protoc
 pdm run python main.py
+pdm run python -m unittest discover -s tests
 ```
+
+Pushing a `v*.*.*` tag builds both platforms and publishes them as one release.
 
 ## Credits
 
-The packet parser, data exporters, and original Windows application were
-created by [blead](https://github.com/blead) in
-[blead/gfl2logger](https://github.com/blead/gfl2logger). This fork adds the
-macOS capture path, packaging, platform-specific UI fixes, and expanded platoon
-payload support.
+`gfl2logger` was created by [blead](https://github.com/blead): the packet
+parser, the data exporters, and the original Windows application. macOS
+support, the Platoon Profile, Activity, and Updates exports, and the parser and
+export hardening were developed in the
+[1window2/gf2logger](https://github.com/1window2/gf2logger) fork.
 
 ## License
 
-This project retains the original MIT license. See [LICENSE](LICENSE).
+MIT, as declared in `pyproject.toml`.
