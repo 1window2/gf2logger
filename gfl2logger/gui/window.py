@@ -2,6 +2,7 @@ import functools
 import multiprocessing
 import queue
 import signal
+import sys
 import tkinter
 import ctypes
 from idlelib import tooltip
@@ -31,16 +32,21 @@ class TkWindow(tkinter.Tk):
                 pass
 
         super().__init__()
-        self.title("gf2logger")
+        self.title("gfl2logger")
         self.minsize(600, 240)
 
         if ICON_PNG is not None:
             self.iconphoto(True, tkinter.PhotoImage(data=ICON_PNG))
 
-        # exit flow: (tk) self.quit -> (tk) from_gui:SHUTDOWN
-        #   -> (main) master.shutdown -> (main) manager.done -> (main) to_gui:SHUTDOWN
-        #   -> (tk) pump -> (tk) self.destroy
+        # Closing the window ends the program: quit() tells the proxy process and then
+        # closes at once without waiting for an answer. The proxy shuts down on that
+        # message, or on noticing this process is gone, and force-exits if that stalls.
+        # A shutdown started by the proxy arrives through pump() as SHUTDOWN instead.
         self.protocol("WM_DELETE_WINDOW", self.quit)
+        if sys.platform == "darwin":
+            # Cmd+Q and the Dock's Quit make Tk exit on the spot by default, which skips
+            # the shutdown exchange with the proxy process. Route them through quit().
+            self.createcommand("::tk::mac::Quit", self.quit)
 
         opt_frame = ttk.Frame(self, padding=10)
         opt_frame.pack(side="left", fill="y")
@@ -111,8 +117,11 @@ class TkWindow(tkinter.Tk):
                 self.options[opt].set(options[opt])
 
     def quit(self) -> None:
-        self.withdraw()
+        if not self.active:
+            return
+        self.active = False
         self.from_gui.put(Command(CommandType.SHUTDOWN, None))
+        self.destroy()
 
     def destroy(self, *_) -> None:
         super().destroy()

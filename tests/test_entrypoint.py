@@ -17,6 +17,9 @@ class FakeQueue:
     def put_nowait(self, item) -> None:
         self.items.append(item)
 
+    def cancel_join_thread(self) -> None:
+        self.join_cancelled = True
+
 
 class FakeProcess:
     def __init__(self) -> None:

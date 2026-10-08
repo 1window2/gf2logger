@@ -1,7 +1,12 @@
 import asyncio
 import logging
 import multiprocessing
+import multiprocessing.connection
+import os
 import queue
+import threading
+import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from mitmproxy import ctx, log, optmanager
@@ -16,6 +21,43 @@ logger = logging.getLogger(__name__)
 
 GUI_POLL_SECONDS = 1.0
 MAX_PENDING_GUI_COMMANDS = 2048
+EXIT_GRACE_SECONDS = 3.0
+
+
+def wait_for_exit(process: multiprocessing.Process) -> None:
+    # Waiting on the sentinel does not reap the process, so it cannot race with the
+    # join() and is_alive() calls made from the event loop thread.
+    multiprocessing.connection.wait([process.sentinel])
+
+
+def exit_when_window_is_gone(
+    process: multiprocessing.Process,
+    *,
+    grace: float = EXIT_GRACE_SECONDS,
+    wait: Callable[[multiprocessing.Process], None] = wait_for_exit,
+    terminate: Callable[[int], None] = os._exit,
+) -> None:
+    """End this process shortly after the window process ends, whatever the reason.
+
+    The program must never keep capturing without a window. Normal shutdown finishes
+    well inside the grace period; this is the backstop for a shutdown that hangs, a
+    proxy still stuck in start-up, or a command loop that has stopped.
+    """
+    wait(process)
+    time.sleep(grace)
+    terminate(0)
+
+
+def start_exit_watchdog(process: multiprocessing.Process) -> threading.Thread:
+    # A plain thread rather than a task: it has to work when the event loop is blocked.
+    watchdog = threading.Thread(
+        target=exit_when_window_is_gone,
+        args=(process,),
+        name="WindowExitWatchdog",
+        daemon=True,
+    )
+    watchdog.start()
+    return watchdog
 
 
 def send_nowait(target: "multiprocessing.Queue[Command]", command: Command) -> bool:
@@ -27,7 +69,28 @@ def send_nowait(target: "multiprocessing.Queue[Command]", command: Command) -> b
     return True
 
 
+async def run_with_window(
+    gui: "GUIManager", run: Callable[[], Awaitable[None]]
+) -> None:
+    """Show the window before the proxy starts and take it down when the proxy ends.
+
+    mitmproxy brings its proxy servers up before it fires the running hook, and the
+    local redirector can take a while or stall there, for example while macOS waits for
+    the Network Extension to be approved. Tying the window to that hook left the app
+    running with nothing on screen, so the window is started first instead.
+    """
+    gui.start()
+    try:
+        await run()
+    finally:
+        gui.close()
+
+
 class GUIManager:
+    _loop_task: asyncio.Task | None = None
+    _closed = False
+    start_exit_watchdog = staticmethod(start_exit_watchdog)
+
     def __init__(self):
         self.from_gui: "multiprocessing.Queue[Command]" = multiprocessing.Queue()
         # Bounded so a window that stops reading cannot make log records pile up in memory.
@@ -45,6 +108,7 @@ class GUIManager:
 
     async def loop(self) -> None:
         self.subprocess.start()
+        self.start_exit_watchdog(self.subprocess)
         try:
             # Wake up periodically: if the window process dies without sending SHUTDOWN, a
             # plain blocking read would leave the proxy capturing with no window to quit it.
@@ -99,18 +163,33 @@ class GUIManager:
     def load(self, _) -> None:
         self.optmanager_wrapper = GFL2OptManagerWrapper(ctx.options)
 
-    async def running(self) -> None:
-        asyncio_utils.create_task(self.loop())
+    def start(self) -> None:
+        """Start the window process and the command loop once."""
+        if self._loop_task is None:
+            self._loop_task = asyncio_utils.create_task(self.loop())
 
-    async def done(self) -> None:
+    async def running(self) -> None:
+        self.start()
+
+    def close(self) -> None:
+        """Ask the window to close and stop waiting for it. Safe to call twice."""
+        if self._closed:
+            return
+        self._closed = True
         send_nowait(self.to_gui, Command(CommandType.SHUTDOWN, None))
-        # Signal-driven shutdown can reach done() while loop() is blocked in
+        # Signal-driven shutdown can reach here while loop() is blocked in
         # from_gui.get().  Wake that read so asyncio can close its worker thread
-        # and the frozen macOS app can exit cleanly.
+        # and the frozen app can exit cleanly.
         self.from_gui.put(Command(CommandType.SHUTDOWN, None))
         self.subprocess.join(timeout=5)
         self.subprocess.terminate()
         self.log_handler.uninstall()
+        # Nothing reads this queue any more; do not let undelivered log records hold
+        # up interpreter exit.
+        self.to_gui.cancel_join_thread()
+
+    async def done(self) -> None:
+        self.close()
 
 
 class GuiLogHandler(log.MitmLogHandler):

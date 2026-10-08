@@ -2,11 +2,11 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
-from mitmproxy import exceptions, master, options, optmanager
+from mitmproxy import exceptions, log, master, options, optmanager
 from mitmproxy.addons import next_layer, proxyserver
 
 from gfl2logger.gfl2.logger import GFL2Logger
-from gfl2logger.gui.manager import GUIManager
+from gfl2logger.gui.manager import GUIManager, run_with_window
 from gfl2logger.proxy.capture import default_capture_mode
 from gfl2logger.proxy.ignore_tls import IgnoreTls
 from gfl2logger.utils.paths import CONFIG_FILENAME, default_data_dir
@@ -45,3 +45,7 @@ class ProxyMaster(master.Master):
             # The app has no console; refusing to start over a damaged config file would
             # look like the app silently failing to open. Fall back to the defaults.
             logger.error(f"Ignoring unreadable configuration {config}, error={error}")
+
+    async def run(self) -> None:
+        logger.log(log.ALERT, f"Starting capture: {', '.join(self.options.mode)}")
+        await run_with_window(self.addons.get("guimanager"), super().run)
